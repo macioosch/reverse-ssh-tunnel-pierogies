@@ -1,3 +1,5 @@
+# Logging in remotely to your firewalled PC at work using a reverse SSH tunnel.
+
 You can't log in remotely to a computer at work or school because their firewall won't let you?
 If you have an account on a Unix-like PC where you can run `ssh` and access the internet, you *can* log in to it remotely!
 Here's what you can do to gain remote access to your firewalled PC, by automatically logging *from work to your home PC* and then using that connection the other way around: to log to your work PC from home.
@@ -9,10 +11,11 @@ Malicious bots will try to do that several times per hour, so you should protect
 Some tips how to do that:
 
 1. Look at your SSH server configuration, that should be `/etc/ssh/sshd_config`.
-1. Disable root login: `PermitRootLogin no`.
+1. Disable root login: `PermitRootLogin no`
 1. Disable logging in with passwords, without a proper key pair:
-    PasswordAuthentication no
-    PermitEmptyPasswords no
+
+`PasswordAuthentication no`  
+`PermitEmptyPasswords no`
 
 Now only non-root users owning a valid key file will be able to log in, but they still may be able to use `sudo` and `su`.
 
@@ -36,11 +39,12 @@ Roughly, on the mentioned web site:
 1. Make an account and log in.
 1. In the "For Members" menu, the "Subdomains" category: create a subdomain, that will be the URL pointing to your computer - if asked for a "type", pick "A".
 1. In the "Dynamic DNS" category, pick the "quick cron example" - notice how it's mostly commentary. The last line is relevant, it's something like:  
-    */10 * * * * /usr/bin/wget --no-check-certificate -O - https://freedns.afraid.org/dynamic/update.php?<SUBDOMAIN ID>= >> /tmp/freedns_<SUBDOMAIN NAME>.log 2>&1 &
+`*/10 * * * * /usr/bin/wget --no-check-certificate -O - https://freedns.afraid.org/dynamic/update.php?<SUBDOMAIN ID>= >> /tmp/freedns_<SUBDOMAIN NAME>.log 2>&1 &`  
 This line (with your subdomain ID & name) should do the trick, although it may need adjustments depending on the system.
 1. Put the line in your crontab **at home** with `$ crontab -e`.
 
 This crontab line will make your home PC tell the DNS service its IP every 10 minutes.
+Of course, ensure cron is running at your home PC.
 Then the DNS will remember it, and it will redirect all requests to the URL you chose to your home PC.
 
 # Check if everything seems to work.
@@ -49,14 +53,20 @@ If you have `sshd` configured and running, a port forwarded, and either static I
 This seems banal, but it checks if everything works.
 If you disabled password login (as you should - bots will try to crack your password otherwise, and they likely may if it's not a 12+ character long random string like `0ZT*dpxkQ1#@&AnB2p`) generate a key pair with `ssh-keygen`.
 Now authorise your public key by adding it to your authorised keys list (assuming that your key is `~/.ssh/id_rsa`) with:
+
     $ cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
+
 This will enable anyone with this key pair (`id_rsa` + `id_rsa.pub`) to log in to your account.
 Don't give the private key (`~/.ssh/id_rsa`) to anyone!
 
 Now when you have a private key (or didn't disable password login), try to use ssh:
+
     $ ssh <YOUR STATIC IP>
+
 or:
+
     $ ssh <YOUR DYNAMIC DNS URL>
+
 that is, for example: `ssh johndoe.mydomain.org`
 
 If you were able to log in, everything seems to work.
@@ -89,8 +99,8 @@ This can be done by adding following code to the beginning of your `~/.bash_prof
 
     SSHAGENT=/usr/bin/ssh-agent
     if [ -z "$SSH_AUTH_SOCK" -a -x "$SSHAGENT" ]; then
-      eval `$SSHAGENT`
-      trap "kill $SSH_AGENT_PID" 0
+        eval `$SSHAGENT`
+        trap "kill $SSH_AGENT_PID" 0
     fi
 
 Copy the key pair to your `~/.ssh/` folder.
@@ -102,7 +112,7 @@ Test if everything works: try to connect to your home PC from work (let's say th
 
 You shouldn't be asked for a password, and you should log in as the user you created to your home PC.
 
-Now, create a short script (let's say you'll save it as `~/bin/tunnel.sh`, the username of the user you created is `jdoe` and your URL is `johndoe.mydomain.org`):
+Create a short script (let's say you'll save it as `~/bin/tunnel.sh`, the username of the user you created is `jdoe` and your URL is `johndoe.mydomain.org`):
 
     #!/usr/bin/env bash
     # command that establishes a reverse ssh tunnel
@@ -119,9 +129,9 @@ Now, create a short script (let's say you'll save it as `~/bin/tunnel.sh`, the u
 Now, this script should be run automatically by the work PC.
 You can do this with `cron`, by adding a line to your crontab with `crontab -e`:
 
-    */10  * * * * /bin/bash /home/myname/bin/tunnel.sh`
+    */10  * * * * /bin/bash /home/myname/bin/tunnel.sh
 
-This will run your script every 10 minutes.
+This will run your script every 10 minutes, if cron is running at your work PC (it should).
 
 Well, all should work now!
 
