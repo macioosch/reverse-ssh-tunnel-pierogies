@@ -8,14 +8,16 @@ Here's what you can do to gain remote access to your firewalled PC, by automatic
 
 You're going to make it possible to log in to your PC remotely from the internet.
 Malicious bots will try to do that several times per hour, so you should protect yourself.
-Some tips how to do that:
+To protect yourself a bit, look at your SSH server configuration, that should be `/etc/ssh/sshd_config`.
 
-1. Look at your SSH server configuration, that should be `/etc/ssh/sshd_config`.
-1. Disable root login: `PermitRootLogin no`
-1. Disable logging in with passwords, without a proper key pair:
+Disable root login:
 
-`PasswordAuthentication no`  
-`PermitEmptyPasswords no`
+    PermitRootLogin no
+
+Disable logging in with passwords, without a proper key pair:
+
+    PasswordAuthentication no
+    PermitEmptyPasswords no
 
 Now only non-root users owning a valid key file will be able to log in, but they still may be able to use `sudo` and `su`.
 
@@ -36,12 +38,14 @@ You will have to set it up before continuing this guide.
 
 Roughly, on the mentioned web site:
 
-1. Make an account and log in.
-1. In the "For Members" menu, the "Subdomains" category: create a subdomain, that will be the URL pointing to your computer - if asked for a "type", pick "A".
-1. In the "Dynamic DNS" category, pick the "quick cron example" - notice how it's mostly commentary. The last line is relevant, it's something like:  
-`*/10 * * * * /usr/bin/wget --no-check-certificate -O - https://freedns.afraid.org/dynamic/update.php?<SUBDOMAIN ID>= >> /tmp/freedns_<SUBDOMAIN NAME>.log 2>&1 &`  
+Make an account and log in.
+In the "For Members" menu, the "Subdomains" category: create a subdomain, that will be the URL pointing to your computer - if asked for a "type", pick "A".
+In the "Dynamic DNS" category, pick the "quick cron example" - notice how it's mostly commentary. The last line is relevant, it's something like:  
+
+    */10 * * * * /usr/bin/wget --no-check-certificate -O - https://freedns.afraid.org/dynamic/update.php?<SUBDOMAIN ID>= >> /tmp/freedns_<SUBDOMAIN NAME>.log 2>&1 &
+
 This line (with your subdomain ID & name) should do the trick, although it may need adjustments depending on the system.
-1. Put the line in your crontab **at home** with `$ crontab -e`.
+Put the line in your crontab **at home** with `$ crontab -e`.
 
 This crontab line will make your home PC tell the DNS service its IP every 10 minutes.
 Of course, ensure cron is running at your home PC.
@@ -75,7 +79,6 @@ You can log in to your PC remotely.
 # Last preparations at home.
 
 You're going to make your work PC automatically connect to your home PC, so then you will be able to use this connection to log back into your work PC from home.
-
 This automatic connecting can be used by anyone who has access to your key files at work to log in to your home PC.
 This is a serious security risk, but you can easily fix it.
 
@@ -83,11 +86,9 @@ Make a new user account, and make sure he doesn't belong in any groups - his hom
 Make sure he can't use `sudo`: log in as him, and try to use it - you should receive a warning: "<USERNAME> is not in the sudoers file.  This incident will be reported."
 
 First - still at home, as the new user - generate a ssh key pair with no password (just press "enter" when asked for a password), and add the public key to the new user's authorised keys list.
-
 Test if you can login as the new user through your static IP without providing any passwords - the key with no password should suffice.
 
 Take BOTH the private and public key with you to work, and remember or write down the username of the account you created and your static IP or URL.
-
 You may want to leave your home PC running for now to be able to test right away if everything works while at work.
 
 # The fun part: set up a reverse ssh tunnel.
@@ -133,16 +134,28 @@ You can do this with `cron`, by adding a line to your crontab with `crontab -e`:
 
 This will run your script every 10 minutes, if cron is running at your work PC (it should).
 
-Well, all should work now!
+Well, the tunnel should work now!
+
+# Using the tunnel.
+
+With the tunnel established, you can now log in *from home to work*, with:
+
+    $ ssh -p 2210 myname@localhost
+    
+Where `myname` is your username at work, and `2210` is the port where the tunnel is - specified in the `tunnel.sh` script.
+Test if the tunnel actually lets you login - log in normally to your home PC from work, and try to run `$ ssh -p 2210 myname@localhost` - if it will log you "back" into your work PC, the tunnel seems to work!
+
+Remember you will need to authenticate somehow when logging in from home - remember your password or setup a key pair.
+`sshd` daemon needs to run both at home and at work.
 
 # One last tweak.
 
 All works, but you may notice your tunnel "collapsing" every once in a while.
 This may be because SSH servers by default close all inactive connections.
-You may change that by putting:
+You may change that by putting both at home and at work (because you log in both ways):
 
-* `TCPKeepAlive yes` in `/etc/ssh/sshd_config` at work, and 
-* `ServerAliveInterval 30` in `/etc/ssh/ssh_config` at home.
+* `TCPKeepAlive yes` in `/etc/ssh/sshd_config`, and 
+* `ServerAliveInterval 30` in `/etc/ssh/ssh_config`.
 
 It will make your home PC ask the work PC every 30 seconds to keep the tunnel alive.
 
